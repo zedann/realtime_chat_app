@@ -2,9 +2,11 @@ package user
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/zedann/realtime_chat_app/server/util"
 )
 
@@ -50,4 +52,47 @@ func (s *service) CreateUser(ctx context.Context, req *CreateUserReq) (*CreateUs
 		Email:    r.Email,
 	}, nil
 
+}
+
+type JWTClaims struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+func (s *service) Login(c context.Context, req *LoginUserReq) (*LoginUserRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+
+	defer cancel()
+
+	u, err := s.Repository.GetUserByEmail(ctx, req.Email)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err := util.CheckPassword(req.Password, u.Password); err != nil {
+		return nil, err
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, JWTClaims{
+		ID:       strconv.FormatInt(u.ID, 10),
+		Username: u.Username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    strconv.FormatInt(u.ID, 10),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		},
+	})
+
+	acessToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginUserRes{
+		accessToken: acessToken,
+		Username:    u.Username,
+		ID:          strconv.FormatInt(u.ID, 10),
+	}, nil
 }
