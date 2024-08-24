@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/zedann/realtime_chat_app/server/db"
 	"github.com/zedann/realtime_chat_app/server/internal/user"
+	"github.com/zedann/realtime_chat_app/server/internal/ws"
 	"github.com/zedann/realtime_chat_app/server/router"
 )
 
@@ -27,7 +28,11 @@ func main() {
 
 	userHandler := user.NewHandler(userSvc)
 
-	router.InitRouter(userHandler)
+	hub := ws.NewHub()
+	wsHandler := ws.NewHandler(hub)
+	router.InitRouter(userHandler, wsHandler)
+
+	go hub.Run()
 
 	router.Start(os.Getenv("LISTEN_ADDR"))
 

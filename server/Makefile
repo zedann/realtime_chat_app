@@ -21,7 +21,7 @@ migratedown:
 
 .PHONY: postgresinit postgres createdb dropdb migrateup migratedown
 
-build:
+build: 
 	@go build -o ./bin/server cmd/main.go
-run: build
+run: build 
 	@./bin/server
